@@ -126,8 +126,9 @@ IFS="," ; for i in $IMAGE;do
 	done
 	IFS=$IFS_ORIG
 	imageReadOnly="$imageName"
-	imageReadOnly=$(echo $imageReadOnly | sed -e "s@\.${ARCH}\$@@")
-	imageReadOnly="$imageReadOnly-read-only.$ARCH-$imageVersion"
+	#imageReadOnly=$(echo $imageReadOnly | sed -e "s@\.${ARCH}\$@@")
+	imageReadOnly=$(echo $imageReadOnly | sed -e "s@\.i686\$@@")
+	imageReadOnly="$imageReadOnly-read-only.i686-$imageVersion"
 	imageName="/cdrom/$imageName-$imageVersion"
 	gzippName=$imageName.gz
 	imageMD5s="$imageName.md5"
@@ -250,7 +251,7 @@ else
 	cdopt=$(CDMountOption $biosBootDevice)
 	mkdir -p $LIVECD && eval mount $cdopt $biosBootDevice $LIVECD
 	if ! mountSystem /dev/loop1 $LIVECD/$imageReadOnly;then
-		systemException "Failed to mount root filesystem" "reboot"
+		systemException "Failed to mount root filesystem $LIVECD $biosBootDevice $imageReadOnly" "reboot"
 	fi
 fi
 validateRootTree

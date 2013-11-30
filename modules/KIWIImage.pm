@@ -1675,10 +1675,86 @@ sub createImageLiveCD {
 		$kiwi -> skipped ();
 		$firmware = 'efi';
 	}
+
+	my $tmpdir_save = $tmpdir;
+	my $isoarch_save = $isoarch;
+	if ($firmware eq 'uefi32') {
+		$cmdL->setImageArchitecture('x86_64');
+		my $bname = $this -> createImageBootImage (
+			'iso',$boot,$xml,$idest,$checkBase
+		);
+		if (! $bname) {
+			return;
+		}
+		$cmdL->setImageArchitecture('i586');
+		$isoarch='x86_64';
+	
+		my $pinitrd = $idest."/".$bname.".".$suf;
+		my $plinux  = $idest."/".$bname.".kernel";
+		my $destination = "$CD/boot/$isoarch/loader";
+		qxx ("mkdir -p $destination");
+		
+		$data = qxx ("cp $pinitrd $destination/initrd 2>&1");
+		$code = $? >> 8;
+		if ($code == 0) {
+			$data = qxx ("cp $plinux $destination/linux 2>&1");
+			$code = $? >> 8;
+		}
+		if ($code != 0) {
+			$kiwi -> failed ();
+			$kiwi -> error  ("Copy of isolinux boot files failed: $data");
+			$kiwi -> failed ();
+			return;
+		}
+		$kiwi -> done ();
+		
+		$kiwi -> info ("Extracting initrd for boot graphics data lookup");
+		$tmpdir = qxx ("mktemp -q -d $idest/boot-iso64.XXXXXX");
+		$code = $? >> 8;
+		if ($code != 0) {
+			$kiwi -> failed();
+			$kiwi -> error  ("Couldn't create tmp dir: $tmpdir: $!");
+			$kiwi -> failed ();
+			return;
+		}
+		chomp $tmpdir;
+		push @{$this->{tmpdirs}},$tmpdir;
+		$data = qxx ("$zipper -cd $pinitrd | (cd $tmpdir && cpio -di 2>&1)");
+		$code = $? >> 8;
+		if ($code != 0) {
+			$kiwi -> failed();
+			$kiwi -> error ("Failed to extract initrd: $data");
+			$kiwi -> failed();
+			return;
+		}
+		$kiwi -> done();
+		qxx ("mkdir -p $tmpdir/boot/grub");
+		my $MBRFD = FileHandle -> new();
+		if (! $MBRFD -> open (">$tmpdir/boot/mbrid")) {
+			$kiwi -> failed ();
+			$kiwi -> error  ("Couldn't create mbrid file: $!");
+			$kiwi -> failed ();
+			return;
+		}
+		print $MBRFD "$this->{mbrid}";
+		$MBRFD -> close();
+		
+		$data = qxx (
+			"cd $tmpdir && find . | cpio @cpio | $zipper -f > $destination/initrd"
+		);
+		$code = $? >> 8;
+		if ($code != 0) {
+			$kiwi -> failed();
+			$kiwi -> error ("Failed to repackage initrd: $data");
+			$kiwi -> failed();
+			return;
+		}
+		$kiwi -> done();
+	}
 	#==========================================
 	# Create bootloader configuration
 	#------------------------------------------
-	if (($firmware eq "efi") || ($firmware eq "uefi")) {
+	if (($firmware eq "efi") || ($firmware eq "uefi") || ($firmware eq "uefi32")) {
 		#==========================================
 		# Setup grub2 if efi live iso is requested
 		#------------------------------------------
@@ -1714,7 +1790,7 @@ sub createImageLiveCD {
 		my $fodir      = '/boot/grub2-efi/themes/';
 		my $ascii      = 'ascii.pf2';
 		my $efi_suffix = '';
-		if ($firmware eq "uefi") {
+		if (($firmware eq "uefi") || ($firmware eq "uefi32")) {
 			$efi_suffix = 'efi';
 		}
 		my @fonts = (
@@ -2029,6 +2105,12 @@ sub createImageLiveCD {
 			return;
 		}
 		$bootloadsize = -s $efi_fat;
+		
+	}
+	if ($firmware eq 'uefi32') {
+		qxx ("rm -rf $tmpdir");
+		$tmpdir = $tmpdir_save;
+		$isoarch = $isoarch_save;
 	}
 	#==========================================
 	# copy base graphics boot CD files

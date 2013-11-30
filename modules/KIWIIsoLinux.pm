@@ -135,9 +135,9 @@ sub new {
 	#---------------------------------------
 	foreach my $arch (sort keys %base) {
 		if (-d $source."/".$base{$arch}{boot}) {
-			if ($arch eq "x86_64") {
-				$catalog[0] = "x86_64_legacy";
-			}
+			#if ($arch eq "x86_64") {
+			#	$catalog[0] = "x86_64_legacy";
+			#}
 			if ($arch eq "ix86") {
 				$catalog[0] = "ix86_legacy";
 			}

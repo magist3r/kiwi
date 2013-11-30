@@ -249,7 +249,9 @@ sub new {
 	#==========================================
 	# Constructor setup
 	#------------------------------------------
-	my $arch = KIWIGlobals -> instance() -> getArch();
+	
+	my $arch = $cmdL -> getImageArchitecture();
+	#my $arch = KIWIGlobals -> instance() -> getArch();
 	my %supported = map { ($_ => 1) } qw(
 		aarch64
 		armv5el
