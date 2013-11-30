@@ -1666,7 +1666,7 @@ sub createImageLiveCD {
     #------------------------------------------
     my @cpio = ("--create", "--format=newc", "--quiet");
     $data = KIWIQX::qxx (
-        "cd $tmpdir && find . | cpio @cpio | $zipper -f > $destination/initrd"
+        "cd $tmpdir && find . \\\( -path ./image -o -path ./usr/lib/grub2 -o -path ./usr/share/grub2 \\\) -prune -o -print | cpio @cpio | $zipper -f > $destination/initrd"
     );
     $code = $? >> 8;
     if ($code != 0) {
@@ -1704,6 +1704,21 @@ sub createImageLiveCD {
         );
         $firmware = 'efi';
     }
+
+    my $FD = FileHandle -> new();
+    if (! $FD -> open(">$CD/bootdisk.key")) {
+        $kiwi -> failed ();
+        $kiwi -> error  ("Couldn't create bootdisk.key: $!");
+        $kiwi -> failed ();
+        return;
+    }
+    print $FD "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"."\n";
+    print $FD "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"."\n";
+    print $FD "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"."\n";
+    print $FD "########################################################################################################################################################################################################"."\n";
+    $FD -> close();
+
+    my $menu_entries = $this->{gdata}->{MenuEntries};
     #==========================================
     # Create bootloader configuration
     #------------------------------------------
@@ -1773,7 +1788,7 @@ sub createImageLiveCD {
         #==========================================
         # Copy modules/fonts/themes on CD
         #------------------------------------------
-        KIWIQX::qxx ("cp $ir_modules/* $cd_modules 2>&1");
+        #KIWIQX::qxx ("cp $ir_modules/* $cd_modules 2>&1");
         if (-d $ir_themes) {
             KIWIQX::qxx ("mv $ir_themes $cd_loader 2>&1");
         }
@@ -1927,20 +1942,22 @@ sub createImageLiveCD {
         print $FD "set timeout=$bootTimeout\n";
         my $title = $systemDisplayName;
         my $lsafe = "Failsafe -- ".$title;
-        print $FD 'menuentry "'.$title.'"';
-        print $FD ' --class opensuse --class os {'."\n";
         #==========================================
         # Standard boot
         #------------------------------------------
         if (! $isxen) {
-            print $FD "\t"."echo Loading linux...\n";
-            print $FD "\t"."set gfxpayload=keep"."\n";
-            print $FD "\t"."\$linux /boot/$isoarch/loader/linux";
-            print $FD ' ramdisk_size=512000 ramdisk_blocksize=4096';
-            print $FD " ${cmdline}\n";
-            print $FD "\t"."echo Loading initrd...\n";
-            print $FD "\t"."\$initrd /boot/$isoarch/loader/initrd\n";
-            print $FD "}\n";
+            for my $entry ( sort keys $menu_entries ) {
+                print $FD 'menuentry "'.$title.$menu_entries->{$entry}{name}.'"';
+                print $FD ' --class opensuse --class os {'."\n";
+                print $FD "\t"."echo Loading linux...\n";
+                print $FD "\t"."set gfxpayload=keep"."\n";
+                print $FD "\t"."\$linux /boot/$isoarch/loader/linux";
+                print $FD ' ramdisk_size=512000 ramdisk_blocksize=4096';
+                print $FD " ${cmdline} $menu_entries->{$entry}{opts}"."\n";
+                print $FD "\t"."echo Loading initrd...\n";
+                print $FD "\t"."\$initrd /boot/$isoarch/loader/initrd\n";
+                print $FD "}\n";
+            }
         } else {
             print $FD "\t"."echo Loading Xen\n";
             print $FD "\t"."multiboot /boot/$isoarch/loader/xen.gz dummy\n";
@@ -1962,7 +1979,7 @@ sub createImageLiveCD {
             print $FD "\t"."echo Loading linux...\n";
             print $FD "\t"."set gfxpayload=keep"."\n";
             print $FD "\t"."\$linux /boot/$isoarch/loader/linux";
-            print $FD ' ramdisk_size=512000 ramdisk_blocksize=4096';
+            print $FD ' ramdisk_size=512000 ramdisk_blocksize=4096 systemd.log_level=debug systemd.log_target=kmsg log_buf_len=1M';
             print $FD " @failsafe ${cmdline}"."\n";
             print $FD "\t"."echo Loading initrd...\n";
             print $FD "\t"."\$initrd /boot/$isoarch/loader/initrd\n";
@@ -2096,19 +2113,21 @@ sub createImageLiveCD {
     print $IFD "prompt   1"."\n";
     print $IFD "timeout  $bootTimeout"."\n";
     if (! $isxen) {
-        print $IFD "label $label"."\n";
-        print $IFD "  kernel linux"."\n";
-        print $IFD "  append initrd=initrd ramdisk_size=512000 ";
-        print $IFD "ramdisk_blocksize=4096${cmdline} showopts ";
-        #print FD "console=ttyS0,9600n8 console=tty0${cmdline} showopts ";
-        if ($vga) {
-            print $IFD "vga=$vga ";
+        for my $entry ( sort keys $menu_entries ) {
+            print $IFD "label $label$menu_entries->{$entry}{name}"."\n";
+            print $IFD "  kernel linux"."\n";
+            print $IFD "  append initrd=initrd ramdisk_size=512000 ";
+            print $IFD "ramdisk_blocksize=4096 ${cmdline} showopts $menu_entries->{$entry}{opts}";
+            if ($vga) {
+                print $IFD "vga=$vga ";
+            }
+            print $IFD "\n";
         }
-        print $IFD "\n";
+
         print $IFD "label $lsafe"."\n";
         print $IFD "  kernel linux"."\n";
         print $IFD "  append initrd=initrd ramdisk_size=512000 ";
-        print $IFD "ramdisk_blocksize=4096${cmdline} showopts ";
+        print $IFD "ramdisk_blocksize=4096 showopts systemd.log_level=debug systemd.log_target=kmsg log_buf_len=1M";
         print $IFD "@failsafe"."\n";
     } else {
         print $IFD "label $label"."\n";

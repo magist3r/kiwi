@@ -344,8 +344,11 @@ function suseConfig {
     # hwclock
     #--------------------------------------
     if [ ! -z "$kiwi_hwclock" ];then
-        baseUpdateSysConfig \
-            /etc/sysconfig/clock HWCLOCK "--$kiwi_hwclock"
+#        baseUpdateSysConfig \
+#            /etc/sysconfig/clock HWCLOCK "--$kiwi_hwclock"
+        if [ "$kiwi_hwclock" == "localtime" ]; then
+            sed '3s/^.*$/LOCAL/' -i /etc/adjtime
+        fi
     fi
     #======================================
     # SuSEconfig

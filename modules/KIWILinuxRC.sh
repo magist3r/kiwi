@@ -8445,6 +8445,11 @@ function bootImage {
     #--------------------------------------
     umount proc &>/dev/null && \
     umount proc &>/dev/null
+
+    rm -rf $prefix/lib/modules
+    rm -rf $prefix/lib/firmware
+    cp -a /lib/modules $prefix/lib/
+    cp -a /lib/firmware $prefix/lib/
     if [ "$FSTYPE" = "zfs" ];then
         #======================================
         # setup shutdown script
@@ -9281,6 +9286,7 @@ function createHybridPersistent {
                 fi
             else
                 export HYBRID_RW=$partd
+                export HYBRID_RW_EXIST=true
             fi
             export skipSetupBootPartition=1
             return
