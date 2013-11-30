@@ -344,8 +344,11 @@ function suseConfig {
     # hwclock
     #--------------------------------------
     if [ ! -z "$kiwi_hwclock" ];then
-        baseUpdateSysConfig \
-            /etc/sysconfig/clock HWCLOCK "--$kiwi_hwclock"
+#        baseUpdateSysConfig \
+#            /etc/sysconfig/clock HWCLOCK "--$kiwi_hwclock"
+        if [ "$kiwi_hwclock" == "localtime" ]; then
+            sed '3s/^.*$/LOCAL/' -i /etc/adjtime
+        fi
     fi
     #======================================
     # SuSEconfig
@@ -1486,6 +1489,9 @@ function suseStripKernel {
                 mkdir -pv $stripdir$kversion
                 mv $kversion/updates $stripdir$kversion
             fi
+            if [ -d $kversion/extra ];then
+                mv $kversion/extra /tmp
+            fi
             #==========================================
             # strip the modules but take care for deps
             #------------------------------------------
@@ -1545,6 +1551,9 @@ function suseStripKernel {
             if [ -f /tmp/modules.order ];then
                 mv /tmp/modules.order $kversion
             fi
+            fi
+            if [ -d /tmp/extra ];then
+                mv /tmp/extra $kversion
             #==========================================
             # run depmod
             #------------------------------------------

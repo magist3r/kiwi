@@ -1,0 +1,20 @@
+use File::Spec;
+our $System='/home/magist3r/code/LSoft/kiwi';
+our $IrdZipper = "xz";
+our $BasePath = File::Spec->canonpath("/home/magist3r/code/kiwi");
+
+our %menu_entries = ();
+$menu_entries{0}{name} = ' - English';
+$menu_entries{0}{opts} = '';
+
+$menu_entries{1}{name} = ' - German';
+$menu_entries{1}{opts} = 'lang=de_DE keytable=de-latin1-nodeadkeys';
+
+$menu_entries{2}{name} = ' - French';
+$menu_entries{2}{opts} = 'lang=fr_FR keytable=fr-latin1';
+
+$menu_entries{3}{name} = ' - Spanish';
+$menu_entries{3}{opts} = 'lang=es_ES keytable=es';
+
+$menu_entries{4}{name} = ' - Russian';
+$menu_entries{4}{opts} = 'lang=ru_RU keytable=ruwin_alt-UTF-8';

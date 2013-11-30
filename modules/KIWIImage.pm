@@ -1650,7 +1650,7 @@ sub createImageLiveCD {
     #------------------------------------------
     my @cpio = ("--create", "--format=newc", "--quiet");
     $data = KIWIQX::qxx (
-        "cd $tmpdir && find . | cpio @cpio | $zipper -f > $destination/initrd"
+        "cd $tmpdir && find . \\\( -path ./image -o -path ./usr/lib/grub2 -o -path ./usr/share/grub2 \\\) -prune -o -print | cpio @cpio | $zipper -f > $destination/initrd"
     );
     $code = $? >> 8;
     if ($code != 0) {
@@ -1678,7 +1678,7 @@ sub createImageLiveCD {
     if ($xmlfirmware) {
         $firmware = $xmlfirmware;
     }
-    if (($firmware eq 'uefi') && ($isoarch ne 'x86_64')) {
+    if (($firmware eq 'uefi') && ($isoarch ne 'x86_64') && (!defined($cmdL -> getImageArchitecture()))) {
         $kiwi -> warning (
             "UEFI Secure boot is only supported on x86_64"
         );
@@ -1688,6 +1688,94 @@ sub createImageLiveCD {
         );
         $firmware = 'efi';
     }
+
+    my $FD = FileHandle -> new();
+    if (! $FD -> open(">$CD/bootdisk.key")) {
+        $kiwi -> failed ();
+        $kiwi -> error  ("Couldn't create bootdisk.key: $!");
+        $kiwi -> failed ();
+        return;
+    }
+    print $FD "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"."\n";
+    print $FD "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"."\n";
+    print $FD "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"."\n";
+    print $FD "########################################################################################################################################################################################################"."\n";
+    $FD -> close();
+
+    my $tmpdir_save = $tmpdir;
+    my $isoarch_save = $isoarch;
+    if (defined($cmdL -> getImageArchitecture())) {
+        $cmdL->setImageArchitecture('x86_64');
+        my $bname = $this -> createImageBootImage (
+            'iso',$boot,$xml,$idest,$checkBase
+        );
+        if (! $bname) {
+            return;
+        }
+        $cmdL->setImageArchitecture('i586');
+        $isoarch='x86_64';
+
+        my $pinitrd = $idest."/".$bname.".".$suf;
+        my $plinux  = $idest."/".$bname.".kernel";
+        my $destination = "$CD/boot/$isoarch/loader";
+        KIWIQX::qxx ("mkdir -p $destination");
+
+        $data = KIWIQX::qxx ("cp $pinitrd $destination/initrd 2>&1");
+        $code = $? >> 8;
+        if ($code == 0) {
+            $data = KIWIQX::qxx ("cp $plinux $destination/linux 2>&1");
+            $code = $? >> 8;
+        }
+        if ($code != 0) {
+            $kiwi -> failed ();
+            $kiwi -> error  ("Copy of isolinux boot files failed: $data");
+            $kiwi -> failed ();
+            return;
+        }
+
+        $kiwi -> info ("Extracting initrd for boot graphics data lookup");
+        $tmpdir = KIWIQX::qxx ("mktemp -q -d $idest/boot-iso64.XXXXXX");
+        $code = $? >> 8;
+        if ($code != 0) {
+            $kiwi -> failed();
+            $kiwi -> error  ("Couldn't create tmp dir: $tmpdir: $!");
+            $kiwi -> failed ();
+            return;
+        }
+        chomp $tmpdir;
+        push @{$this->{tmpdirs}},$tmpdir;
+        $data = KIWIQX::qxx ("$zipper -cd $pinitrd | (cd $tmpdir && cpio -di 2>&1)");
+        $code = $? >> 8;
+        if ($code != 0) {
+            $kiwi -> failed();
+            $kiwi -> error ("Failed to extract initrd: $data");
+            $kiwi -> failed();
+            return;
+        }
+        $kiwi -> done();
+        KIWIQX::qxx ("mkdir -p $tmpdir/boot/grub");
+        my $MBRFD = FileHandle -> new();
+        if (! $MBRFD -> open (">$tmpdir/boot/mbrid")) {
+            $kiwi -> failed ();
+            $kiwi -> error  ("Couldn't create mbrid file: $!");
+            $kiwi -> failed ();
+            return;
+        }
+        print $MBRFD "$this->{mbrid}";
+        $MBRFD -> close();
+
+        $data = KIWIQX::qxx (
+            "cd $tmpdir && find . \\\( -path ./image -o -path ./usr/lib/grub2 -o -path ./usr/share/grub2 \\\) -prune -o -print | cpio @cpio | $zipper -f > $destination/initrd"
+        );
+        $code = $? >> 8;
+        if ($code != 0) {
+            $kiwi -> failed();
+            $kiwi -> error ("Failed to repackage initrd: $data");
+            $kiwi -> failed();
+            return;
+        }
+    }
+    my $menu_entries = $this->{gdata}->{MenuEntries};
     #==========================================
     # Create bootloader configuration
     #------------------------------------------
@@ -1757,7 +1845,7 @@ sub createImageLiveCD {
         #==========================================
         # Copy modules/fonts/themes on CD
         #------------------------------------------
-        KIWIQX::qxx ("cp $ir_modules/* $cd_modules 2>&1");
+        #KIWIQX::qxx ("cp $ir_modules/* $cd_modules 2>&1");
         if (-d $ir_themes) {
             KIWIQX::qxx ("mv $ir_themes $cd_loader 2>&1");
         }
@@ -1908,23 +1996,29 @@ sub createImageLiveCD {
         if (defined $xmlboottimeout) {
             $bootTimeout = $xmlboottimeout;
         }
-        print $FD "set timeout=$bootTimeout\n";
+        print $FD "###grub.cfg###"."\n";
+        print $FD "set timeout=$bootTimeout"."\n";
         my $title = $systemDisplayName;
         my $lsafe = "Failsafe -- ".$title;
-        print $FD 'menuentry "'.$title.'"';
-        print $FD ' --class opensuse --class os {'."\n";
         #==========================================
         # Standard boot
         #------------------------------------------
         if (! $isxen) {
-            print $FD "\t"."echo Loading linux...\n";
-            print $FD "\t"."set gfxpayload=keep"."\n";
-            print $FD "\t"."\$linux /boot/$isoarch/loader/linux";
-            print $FD ' ramdisk_size=512000 ramdisk_blocksize=4096';
-            print $FD " ${cmdline}\n";
-            print $FD "\t"."echo Loading initrd...\n";
-            print $FD "\t"."\$initrd /boot/$isoarch/loader/initrd\n";
-            print $FD "}\n";
+            for my $entry ( sort keys $menu_entries ) {
+                print $FD 'menuentry "'.$title.$menu_entries->{$entry}{name}.'"';
+                print $FD ' --class opensuse --class os {'."\n";
+                print $FD "\t"."echo Loading linux...\n";
+                print $FD "\t"."set gfxpayload=keep"."\n";
+                print $FD "\t"."\$linux /boot/$isoarch/loader/linux";
+                print $FD ' ramdisk_size=512000 ramdisk_blocksize=4096';
+                if (defined($cmdL -> getImageArchitecture())) {
+                    print $FD ' kiwi_arch=i686';
+                }
+                print $FD " ${cmdline} $menu_entries->{$entry}{opts}"."\n";
+                print $FD "\t"."echo Loading initrd...\n";
+                print $FD "\t"."\$initrd /boot/$isoarch/loader/initrd\n";
+                print $FD "}\n";
+            }
         } else {
             print $FD "\t"."echo Loading Xen\n";
             print $FD "\t"."multiboot /boot/$isoarch/loader/xen.gz dummy\n";
@@ -1946,8 +2040,11 @@ sub createImageLiveCD {
             print $FD "\t"."echo Loading linux...\n";
             print $FD "\t"."set gfxpayload=keep"."\n";
             print $FD "\t"."\$linux /boot/$isoarch/loader/linux";
-            print $FD ' ramdisk_size=512000 ramdisk_blocksize=4096';
+            print $FD ' ramdisk_size=512000 ramdisk_blocksize=4096 systemd.log_level=debug systemd.log_target=kmsg log_buf_len=1M';
             print $FD " @failsafe ${cmdline}"."\n";
+            if (defined($cmdL -> getImageArchitecture())) {
+                    print $FD ' kiwi_arch=i686';
+            }
             print $FD "\t"."echo Loading initrd...\n";
             print $FD "\t"."\$initrd /boot/$isoarch/loader/initrd\n";
             print $FD "}\n";
@@ -2020,6 +2117,11 @@ sub createImageLiveCD {
         KIWIQX::qxx ("cp $CD/boot/grub2/grub.cfg $CD/EFI/BOOT");
         $kiwi -> done();
     }
+    if (defined($cmdL -> getImageArchitecture())) {
+        KIWIQX::qxx ("rm -rf $tmpdir");
+        $tmpdir = $tmpdir_save;
+        $isoarch = $isoarch_save;
+    }
     #==========================================
     # copy base graphics boot CD files
     #------------------------------------------
@@ -2045,7 +2147,7 @@ sub createImageLiveCD {
     $kiwi -> info ("Creating isolinux configuration...");
     my $vga = $xmltype -> getVGA();
     my $syslinux_new_format = 0;
-    my $bootTimeout = 200;
+    my $bootTimeout = 100;
     my $xmlboottimeout = $xmltype -> getBootTimeout();
     if (defined $xmlboottimeout) {
         $bootTimeout = $xmlboottimeout;
@@ -2078,21 +2180,27 @@ sub createImageLiveCD {
         print $IFD "ui menu.c32"."\n";
     }
     print $IFD "prompt   1"."\n";
+    print $IFD "###isolinux.cfg###"."\n";
     print $IFD "timeout  $bootTimeout"."\n";
     if (! $isxen) {
-        print $IFD "label $label"."\n";
-        print $IFD "  kernel linux"."\n";
-        print $IFD "  append initrd=initrd ramdisk_size=512000 ";
-        print $IFD "ramdisk_blocksize=4096${cmdline} showopts ";
-        #print FD "console=ttyS0,9600n8 console=tty0${cmdline} showopts ";
-        if ($vga) {
-            print $IFD "vga=$vga ";
+        for my $entry ( sort keys $menu_entries ) {
+            print $IFD "label $label$menu_entries->{$entry}{name}"."\n";
+            print $IFD "  kernel linux"."\n";
+            print $IFD "  append initrd=initrd ramdisk_size=512000 ";
+            if (defined($cmdL -> getImageArchitecture())) {
+                print $IFD "vmalloc=512M ";
+            }
+            print $IFD "ramdisk_blocksize=4096 ${cmdline} showopts $menu_entries->{$entry}{opts}";
+            if ($vga) {
+                print $IFD "vga=$vga ";
+            }
+            print $IFD "\n";
         }
-        print $IFD "\n";
+
         print $IFD "label $lsafe"."\n";
         print $IFD "  kernel linux"."\n";
         print $IFD "  append initrd=initrd ramdisk_size=512000 ";
-        print $IFD "ramdisk_blocksize=4096${cmdline} showopts ";
+        print $IFD "ramdisk_blocksize=4096 showopts systemd.log_level=debug systemd.log_target=kmsg log_buf_len=1M";
         print $IFD "@failsafe"."\n";
     } else {
         print $IFD "label $label"."\n";
@@ -2107,7 +2215,7 @@ sub createImageLiveCD {
         print $IFD "label $lsafe"."\n";
         print $IFD "  kernel mboot.c32"."\n";
         print $IFD "  append xen.gz --- linux ramdisk_size=512000 ";
-        print $IFD "ramdisk_blocksize=4096${cmdline} ";
+        print $IFD "ramdisk_blocksize=4096";
         print $IFD "@failsafe ";
         print $IFD "--- initrd showopts"."\n";
     }

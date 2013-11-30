@@ -3515,6 +3515,11 @@ function setupDefaultFstab {
         echo "usbfs   /proc/bus/usb     usbfs   noauto          0 0"  >> $nfstab
     grep -q /run $nfstab || test -e /run && \
         echo "tmpfs   /run              tmpfs   noauto          0 0"  >> $nfstab
+    if [ ! -z "$HYBRID_RW" ]; then
+        echo "tmpfs   /tmp              tmpfs   noauto          0 0"  >> $nfstab
+        echo "tmpfs   /var/tmp          tmpfs   noauto          0 0"  >> $nfstab
+    fi
+
 }
 #======================================
 # updateRootDeviceFstab
@@ -6268,11 +6273,16 @@ function includeKernelParameters {
         if [ ! -f $modfile ];then
             modfile=/etc/modprobe.conf.local
         fi
+        local availableMem=$(cat /proc/meminfo | grep MemTotal | sed 's/[^0-9]*//g')
+        local _ramdisk_size=$ramdisk_size
+        if [ "$availableMem" -ge "2097152" ]; then
+            _ramdisk_size=$(expr $availableMem / 2)
+        fi
         if [ -f $modfile ];then
             if grep -q rd_size $modfile;then
-                sed -i -e s"@rd_size=.*@rd_size=$ramdisk_size@" $modfile
+                sed -i -e s"@rd_size=.*@rd_size=$_ramdisk_size@" $modfile
             else
-                echo "options brd rd_size=$ramdisk_size" >> $modfile
+                echo "options brd rd_size=$_ramdisk_size" >> $modfile
             fi
         fi
     fi
@@ -8286,6 +8296,10 @@ function bootImage {
         fi
         cp -a $dir $prefix/run/initramfs
     done
+    rm -rf /mnt/lib/modules
+    rm -rf /mnt/lib/firmware
+    ln -sf /run/initramfs/lib/modules /mnt/lib/
+    ln -sf /run/initramfs/lib/firmware /mnt/lib/
     if [ "$FSTYPE" = "zfs" ];then
         #======================================
         # setup shutdown script
@@ -9122,6 +9136,7 @@ function createHybridPersistent {
                 fi
             else
                 export HYBRID_RW=$partd
+            export HYBRID_RW_EXIST=true
             fi
             export skipSetupBootPartition=1
             return
@@ -11519,6 +11534,20 @@ function initialize {
     # Start boot timer (first stage)
     #--------------------------------------
     startUtimer
+}
+
+#======================================
+# baseUpdateSysConfig
+#--------------------------------------
+function baseUpdateSysConfig {
+	# /.../
+	# Update sysconfig variable contents
+	# ----
+	local FILE=$1
+	local VAR=$2
+	local VAL=$3
+	local args=$(echo "s'@^\($VAR=\).*\$@\1\\\"$VAL\\\"@'")
+	eval sed -i $args $FILE
 }
 
 # vim: set noexpandtab:

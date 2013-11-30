@@ -150,7 +150,7 @@ sub new {
     #---------------------------------------
     foreach my $arch (sort keys %base) {
         if (-d $source."/".$base{$arch}{boot}) {
-            if ($arch eq "x86_64") {
+            if (($arch eq "x86_64") && (!defined($cmdL -> getImageArchitecture()))) {
                 $catalog[0] = "x86_64_legacy";
             }
             if ($arch eq "ix86") {
@@ -1288,6 +1288,7 @@ sub makeIsoEFIBootable {
     my $this = shift;
     my $kiwi = $this->{kiwi};
     my $xml  = $this->{xml};
+    my $cmdL = $this->{cmdL};
     my $source = $this->{source};
     my $efi_arch = 'x86_64';
     my $firmware = 'bios';
@@ -1306,6 +1307,9 @@ sub makeIsoEFIBootable {
     }
     my $arch = KIWIQX::qxx ("uname -m");
     chomp $arch;
+    if (defined($cmdL -> getImageArchitecture())) {
+        $arch = 'x86_64';
+    }
     if ($arch =~ /i.86/) {
         $efi_arch = 'i386';
     } else {

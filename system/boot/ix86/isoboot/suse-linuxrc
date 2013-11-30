@@ -22,7 +22,6 @@
 export PATH="/sbin:/bin:/usr/sbin:/usr/bin"
 export IFS_ORIG=$IFS
 export DEBUG=0
-export ARCH=`arch`
 
 #======================================
 # Exports (Configuration)...
@@ -67,6 +66,12 @@ if grep -i -q "livecd_config=[a-zA-Z0-9/]" /proc/cmdline; then
 fi
 if grep -i -q "toram" /proc/cmdline; then
     export TORAM="true"
+fi
+
+if [ ! -z "$kiwi_arch" ]; then
+    export ARCH="$kiwi_arch"
+else
+    export ARCH=`arch`
 fi
 
 #======================================
@@ -279,6 +284,180 @@ setupConfigFiles
 # 15) update system dependant files
 #--------------------------------------
 setupInittab /mnt
+
+#======================================
+# keytable
+#--------------------------------------
+if [ ! -z "$keytable" ] && [ ! $HYBRID_RW_EXIST ];then
+keymap=$keytable.map.gz
+baseUpdateSysConfig /mnt/etc/sysconfig/keyboard KEYTABLE $keymap
+    key=$(echo $keytable | cut -c 1-2)
+    echo -e "\nLayoutList=us,$key" >> /mnt/etc/kde4/share/config/kxkbrc
+    echo -e "Use=true" >> /mnt/etc/kde4/share/config/kxkbrc
+    case $key in
+        "de") TIMEZONE_NAME="Europe/Berlin";;
+        "fr") TIMEZONE_NAME="Europe/Paris";;
+        "es") TIMEZONE_NAME="Europe/Madrid";;
+        "ru") TIMEZONE_NAME="Europe/Moscow";;
+    esac
+fi
+#======================================
+# locale
+#--------------------------------------
+if [ ! -z "$lang" ] && [ ! $HYBRID_RW_EXIST ];then
+    language=$lang.UTF-8
+    baseUpdateSysConfig /mnt/etc/sysconfig/language RC_LANG $language
+fi
+
+if [ ! $HYBRID_RW_EXIST ]; then
+    BOOTDISK_KEY="$LIVECD/bootdisk.key"
+    BOOTDISK_CONF_DIR='/mnt/etc/lsoft'
+    IP_DIR="/mnt/etc/NetworkManager/system-connections"
+    IP_FILE="$BOOTDISK_CONF_DIR/default"
+
+    # parse bootdisk.key
+    _username=$(head -n1 $BOOTDISK_KEY | sed 's/\~//g')
+    _key=$(head -n2 $BOOTDISK_KEY | tail -n1 | sed 's/\^//g')
+    _params=$(head -n3 $BOOTDISK_KEY | tail -n1 | sed 's/\+//g')
+    _cmd_opts=$(tail -n1 $BOOTDISK_KEY | sed 's/\#//g')
+    _tzIANA=
+
+    if [[ $_cmd_opts == !!!TZ=* ]]; then
+        _tzIANA=$(echo $_cmd_opts | cut -f 4 -d '!' | sed 's/TZ=//')
+        _cmd_opts=$(echo $_cmd_opts | sed 's/^!!!TZ=[^!]*!!!//')
+    fi
+
+    if [ ! -z "$_username" ] && [ ! -z "$_key" ]; then #key
+        mkdir -p "$BOOTDISK_CONF_DIR"
+        echo "name=$_username" > "$BOOTDISK_CONF_DIR/bootdisk.conf"
+        echo "key=$_key" >> "$BOOTDISK_CONF_DIR/bootdisk.conf"
+    fi
+
+    if [ ! -z $_params ]; then
+        OIFS=$IFS
+        IFS='|'
+        params_arr=($_params)
+        IFS=$OIFS
+        if [ ! -z ${params_arr[0]} ]; then #timezone
+            case ${params_arr[0]} in
+                "-1") TIMEZONE_NAME="$_tzIANA";;
+                "0") TIMEZONE_NAME="Asia/Kamchatka";;
+                "1") TIMEZONE_NAME="Asia/Sakhalin";;
+                "2") TIMEZONE_NAME="Australia/Melbourne";;
+                "3") TIMEZONE_NAME="Asia/Tokyo";;
+                "4") TIMEZONE_NAME="Asia/Hong_Kong";;
+                "5") TIMEZONE_NAME="Asia/Bangkok";;
+                "6") TIMEZONE_NAME="Asia/Almaty";;
+                "7") TIMEZONE_NAME="Asia/Tashkent";;
+                "8") TIMEZONE_NAME="Asia/Muscat";;
+                "9") TIMEZONE_NAME="Europe/Moscow";;
+                "10") TIMEZONE_NAME="Europe/Helsinki";;
+                "11") TIMEZONE_NAME="Europe/Berlin";;
+                "12") TIMEZONE_NAME="GMT";;
+                "13") TIMEZONE_NAME="Atlantic/Azores";;
+                "14") TIMEZONE_NAME="America/Noronha";;
+                "15") TIMEZONE_NAME="Brazil/East";;
+                "16") TIMEZONE_NAME="Canada/Atlantic";;
+                "17") TIMEZONE_NAME="US/Eastern";;
+                "18") TIMEZONE_NAME="US/Central";;
+                "19") TIMEZONE_NAME="US/Mountain";;
+                "20") TIMEZONE_NAME="US/Pacific";;
+                "21") TIMEZONE_NAME="US/Alaska";;
+                "22") TIMEZONE_NAME="US/Hawaii";;
+                "23") TIMEZONE_NAME="US/Samoa";;
+                "24") TIMEZONE_NAME="Etc/GMT+12";;
+            esac
+        fi
+
+        if [ ${params_arr[3]} == '0' ]; then #disable network
+            mount -t proc none /mnt/proc
+            mount -o bind /dev /mnt/dev
+            chroot /mnt systemctl disable NetworkManager.service
+            umount /mnt/proc
+            umount /mnt/dev
+        else
+            if [ ${params_arr[4]} == '0' ]; then #disable firewall
+                mount -t proc none /mnt/proc
+                mount -o bind /dev /mnt/dev
+                chroot /mnt systemctl disable SuSEfirewall2.service
+                chroot /mnt systemctl disable SuSEfirewall2_init.service
+                umount /mnt/proc
+                umount /mnt/dev
+                baseUpdateSysConfig /mnt/etc/sysconfig/network/config FIREWALL NO
+            fi
+
+            if [ ${params_arr[5]} == '0' ]; then #static ip
+                if [ -z ${params_arr[6]} ] || [ -z ${params_arr[7]} ] || [ -z ${params_arr[8]} ] || [ -z ${params_arr[9]} ]; then #
+                    echo "Error: wrong static ip settings. Fall back to dhcp."
+                else
+                    nbits=0
+                    OIFS=$IFS
+                    IFS=.
+                    for dec in ${params_arr[7]}; do
+                        case $dec in
+                            255) let nbits+=8;;
+                            254) let nbits+=7 ; break ;;
+                            252) let nbits+=6 ; break ;;
+                            248) let nbits+=5 ; break ;;
+                            240) let nbits+=4 ; break ;;
+                            224) let nbits+=3 ; break ;;
+                            192) let nbits+=2 ; break ;;
+                            128) let nbits+=1 ; break ;;
+                            0);;
+                        esac
+                    done
+                    IFS=$OIFS
+
+                    sed "s/@@ADDRESS@@/${params_arr[6]}/" -i $IP_FILE
+                    sed "s/@@MASK@@/$nbits/" -i $IP_FILE
+                    sed "s/@@DNS@@/${params_arr[8]}/" -i $IP_FILE
+                    sed "s/@@GATEWAY@@/${params_arr[9]}/" -i $IP_FILE
+
+                    mkdir -p "$IP_DIR"
+                    cp -pf "$IP_FILE" "$IP_DIR/"
+                fi
+            fi
+        fi
+
+        if [ ! -z "${params_arr[10]}" ]; then #constants
+            AUTOSTART_FILE="$BOOTDISK_CONF_DIR/${params_arr[10]}.desktop"
+            if [ -e "$AUTOSTART_FILE" ]; then
+                if [ ${params_arr[1]} == '1' ]; then #autostart
+                    sed "s/@@OPTIONS@@/$_cmd_opts/" -i $AUTOSTART_FILE
+                fi
+                cp -f "$AUTOSTART_FILE" /mnt/usr/share/autostart
+            fi
+        fi
+    fi
+fi
+
+if [ ! -z "$TIMEZONE_NAME" ];then
+    if [ -f /mnt/usr/share/zoneinfo/$TIMEZONE_NAME ];then
+        ln -sf /usr/share/zoneinfo/$TIMEZONE_NAME /mnt/etc/localtime
+        baseUpdateSysConfig /mnt/etc/sysconfig/clock TIMEZONE $TIMEZONE_NAME
+    else
+        Echo "timezone: $TIMEZONE_NAME not found"
+    fi
+fi
+
+#======================================
+# Add repos (for offline build support)
+#--------------------------------------
+mount -t proc none /mnt/proc
+mount -o bind /dev /mnt/dev
+
+baseRepo="http://download.opensuse.org/distribution/13.2/repo/oss"
+baseName="suse-13.2"
+chroot /mnt zypper ar $baseRepo $baseName
+
+baseRepo="http://download.opensuse.org/distribution/13.2/repo/non-oss"
+baseName="suse-13.2-non-oss"
+chroot /mnt zypper ar $baseRepo $baseName
+
+chroot /mnt zypper mr -a -r --no-gpgcheck
+
+umount /mnt/proc
+umount /mnt/dev
 
 #======================================
 # 16) setup real root device

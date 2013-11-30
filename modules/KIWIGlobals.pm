@@ -1976,6 +1976,7 @@ sub _new_instance {
     $data{LuksCipher}    = $LuksCipher;    # configurable luks passphrase
     $data{System}        = $System;        # configurable base image desc. path
     $data{IrdZipper}     = $IrdZipper;     # configurable zipper switch for ird
+    $data{MenuEntries}   = \%menu_entries;
     if ( ! defined $BasePath ) {
         $data{BasePath} = "/usr/share/kiwi";
     }
