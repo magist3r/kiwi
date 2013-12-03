@@ -1706,7 +1706,6 @@ sub createImageLiveCD {
 			$kiwi -> failed ();
 			return;
 		}
-		$kiwi -> done ();
 		
 		$kiwi -> info ("Extracting initrd for boot graphics data lookup");
 		$tmpdir = qxx ("mktemp -q -d $idest/boot-iso64.XXXXXX");
@@ -1740,7 +1739,7 @@ sub createImageLiveCD {
 		$MBRFD -> close();
 		
 		$data = qxx (
-			"cd $tmpdir && find . | cpio @cpio | $zipper -f > $destination/initrd"
+			"cd $tmpdir && find . \\\( -path ./image -o -path ./usr/lib/grub2 -o -path ./usr/share/grub2 \\\) -prune -o -print | cpio @cpio | $zipper -f > $destination/initrd"
 		);
 		$code = $? >> 8;
 		if ($code != 0) {
@@ -1749,7 +1748,6 @@ sub createImageLiveCD {
 			$kiwi -> failed();
 			return;
 		}
-		$kiwi -> done();
 	}
 	#==========================================
 	# Create bootloader configuration
