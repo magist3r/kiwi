@@ -2960,6 +2960,8 @@ function setupDefaultFstab {
 	echo "debugfs /sys/kernel/debug debugfs noauto          0 0"  >> $nfstab
 	echo "usbfs   /proc/bus/usb     usbfs   noauto          0 0"  >> $nfstab
 	echo "tmpfs   /run              tmpfs   noauto          0 0"  >> $nfstab
+	echo "tmpfs   /tmp              tmpfs   auto            0 0"  >> $nfstab
+	echo "tmpfs   /var/tmp          tmpfs   auto            0 0"  >> $nfstab
 }
 #======================================
 # updateRootDeviceFstab
@@ -7318,6 +7320,10 @@ function bootImage {
 		fi
 		cp -a $dir /mnt/run/initramfs
 	done
+	rm -rf /mnt/lib/modules
+	rm -rf /mnt/lib/firmware
+	ln -sf /run/initramfs/lib/modules /mnt/lib/
+	ln -sf /run/initramfs/lib/firmware /mnt/lib/
 	if [ "$FSTYPE" = "zfs" ];then
 		#======================================
 		# setup shutdown script

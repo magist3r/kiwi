@@ -1551,6 +1551,9 @@ function suseStripKernel {
 			if [ -d $kversion/weak-updates ];then
 				mv $kversion/weak-updates /tmp
 			fi
+			if [ -d $kversion/extra ];then
+				mv $kversion/extra /tmp
+			fi
 			#==========================================
 			# strip the modules but take care for deps
 			#------------------------------------------
@@ -1618,6 +1621,9 @@ function suseStripKernel {
 			fi
 			if [ -d /tmp/weak-updates ];then
 				mv /tmp/weak-updates $kversion
+			fi
+			if [ -d /tmp/extra ];then
+				mv /tmp/extra $kversion
 			fi
 			#==========================================
 			# run depmod
