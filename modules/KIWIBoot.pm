@@ -2769,8 +2769,8 @@ sub setupBootDisk {
         my $rw = $deviceMap{readwrite};
         my $fsOpts = $cmdL -> getFilesystemOptions();
         my $createArgs = $fsOpts -> getOptionsStrExt();
-        my $fstool = "mkfs.ext3";
-        $status = KIWIQX::qxx ("$fstool $createArgs $rw 2>&1");
+        my $fstool = "mkfs.xfs";
+        $status = KIWIQX::qxx ("$fstool $rw 2>&1");
         $result = $? >> 8;
         if ($result != 0) {
             $kiwi -> failed ();

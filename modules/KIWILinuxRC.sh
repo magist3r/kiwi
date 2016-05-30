@@ -8446,10 +8446,14 @@ function bootImage {
     umount proc &>/dev/null && \
     umount proc &>/dev/null
 
-    rm -rf $prefix/lib/modules
-    rm -rf $prefix/lib/firmware
-    cp -a /lib/modules $prefix/lib/
-    cp -a /lib/firmware $prefix/lib/
+    # copy modules from initrd to tmpfs and use them
+    mkdir -p $prefix/run/kernel-modules/lib
+    cp -a /lib/modules $prefix/run/kernel-modules/lib
+    cp -a /lib/firmware $prefix/run/kernel-modules/lib
+
+    ln -sf /run/kernel-modules/lib/modules $prefix/lib/modules
+    ln -sf /run/kernel-modules/lib/firmware $prefix/lib/firmware
+
     if [ "$FSTYPE" = "zfs" ];then
         #======================================
         # setup shutdown script
