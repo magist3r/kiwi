@@ -2977,6 +2977,19 @@ function setupBootLoaderGrub {
         echo " rootnoverify (hd0,$gdevreco)"              >> $menu
         echo " chainloader +1"                            >> $menu
     fi
+    title=$(makeLabel "Restore to Factory Defaults")
+    echo "title $title"                               >> $menu
+    echo -n " kernel $gdev/boot/$kernel"              >> $menu
+    echo -n " root=$diskByID"                         >> $menu
+    if [ ! -z "$imageDiskDevice" ];then
+        echo -n " disk=$(getDiskID $imageDiskDevice)" >> $menu
+    fi
+    echo -n " $console vga=$fbmode"                   >> $menu
+    echo -n " $KIWI_INITRD_PARAMS"                    >> $menu
+    echo -n " $KIWI_KERNEL_OPTIONS"                   >> $menu
+    echo -n " repart_rw_partition=1"                  >> $menu
+    echo " showopts"                                  >> $menu
+    echo " initrd $gdev/boot/$initrd"                 >> $menu
     #======================================
     # create grub.conf file
     #--------------------------------------

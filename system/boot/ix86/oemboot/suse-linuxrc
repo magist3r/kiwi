@@ -257,6 +257,10 @@ fi
 #--------------------------------------
 setupInitialDeviceNames
 
+if [ "$repart_rw_partition" = "1" ]; then
+    mkfs.xfs -f $imageRWDevice
+fi
+
 #======================================
 # 11) Check for read-only filesystem
 #--------------------------------------
