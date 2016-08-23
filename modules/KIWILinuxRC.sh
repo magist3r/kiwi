@@ -2977,7 +2977,7 @@ function setupBootLoaderGrub {
         echo " rootnoverify (hd0,$gdevreco)"              >> $menu
         echo " chainloader +1"                            >> $menu
     fi
-    title=$(makeLabel "Restore to Factory Defaults")
+    title=$(makeLabel "Reset to Factory Settings")
     echo "title $title"                               >> $menu
     echo -n " kernel $gdev/boot/$kernel"              >> $menu
     echo -n " root=$diskByID"                         >> $menu
