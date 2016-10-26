@@ -65,6 +65,7 @@ sub new {
         description
         import
         name
+        displayname
     );
     $this->{supportedKeywords} = \%keywords;
     my %boolKW = map { ($_ => 1) } qw( import );
@@ -81,6 +82,7 @@ sub new {
     $this -> p_initializeBoolMembers($init);
     $this->{description} = $init->{description};
     $this->{name}        = $init->{name};
+    $this->{displayname} = $init->{displayname};
 
     # Track the defaults
     if (! $init->{import}) {
@@ -123,6 +125,17 @@ sub getName {
 }
 
 #==========================================
+# getDisplayName
+#------------------------------------------
+sub getDisplayName {
+    # ...
+    # Return the display name of this profile
+    # ---
+    my $this = shift;
+    return $this->{displayname};
+}
+
+#==========================================
 # getXMLElement
 #------------------------------------------
 sub getXMLElement {
@@ -133,6 +146,7 @@ sub getXMLElement {
     my $element = XML::LibXML::Element -> new('profile');
     $element -> setAttribute('name', $this -> getName());
     $element -> setAttribute('description', $this -> getDescription());
+    $element -> setAttribute('displayname', $this -> getDisplayName());
     if (! $this->{defaultimport}) {
         my $import = $this -> getImportStatus();
         if ($import) {

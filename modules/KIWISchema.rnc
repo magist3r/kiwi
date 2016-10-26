@@ -1250,6 +1250,7 @@ div {
     k.profile.description.attribute =
         ## Description of how this profiles influences the image
         attribute description { text }
+    k.profile.displayname.attribute = attribute displayname { text }
     k.profile.import.attribute =
         ## Import profile by default if no profile was set on
         ## the command line
@@ -1257,6 +1258,7 @@ div {
     k.profile.attlist =
         k.profile.name.attribute &
         k.profile.description.attribute &
+        k.profile.displayname.attribute? &
         k.profile.import.attribute?
     k.profile =
         ## Creates Profiles

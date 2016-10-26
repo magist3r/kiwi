@@ -374,6 +374,7 @@ sub new {
         $this->{imageConfig}{displayName} = $displayName;
     }
     my %kDefProfile = (
+        'displayname' => '',
         'description' => 'KIWI default profile, store non qualified data',
         'import'      => 'true'
     );
@@ -5137,6 +5138,7 @@ sub __populateProfileInfo {
             my $descript = $element -> getAttribute ('description');
             my $import   = $element -> getAttribute ('import');
             my $profName = $element -> getAttribute ('name');
+            my $displayName = $element -> getAttribute ('displayname');
             push @availableProfiles, $profName;
             #==========================================
             # insert into internal data structure
@@ -5144,7 +5146,8 @@ sub __populateProfileInfo {
             my %profile = (
                 description => $descript,
                 import      => $import,
-                name        => $profName
+                name        => $profName,
+                displayname => $displayName
             );
             $this->{imageConfig}{$profName}{profInfo} =
                 KIWIXMLProfileData -> new(\%profile);
@@ -5164,6 +5167,19 @@ sub __populateProfileInfo {
     #==========================================
     # store selected profile list
     #------------------------------------------
+
+    my $profileName = $selectProfs[-1];
+    if ($profileName ne "kiwi_default") {
+        my $lastProfile = $this->{imageConfig}{$profileName}{profInfo};
+        if ($lastProfile) {
+            my $displayName = $lastProfile->getDisplayName();
+            if ($displayName) {
+                $this->{imageConfig}{imageName} = $displayName;
+                $this->{imageConfig}{displayName} = $displayName;
+            }
+        }
+    }
+    
     $this->{selectedProfiles} = \@selectProfs;
     return $this;
 }

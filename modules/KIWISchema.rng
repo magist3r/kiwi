@@ -1583,6 +1583,9 @@ specifies filenames which are in the read-write disk area</db:para>
         <a:documentation>Description of how this profiles influences the image</a:documentation>
       </attribute>
     </define>
+    <define name="k.profile.displayname.attribute">
+      <attribute name="displayname"/>
+    </define>
     <define name="k.profile.import.attribute">
       <attribute name="import">
         <a:documentation>Import profile by default if no profile was set on
@@ -1594,6 +1597,9 @@ the command line</a:documentation>
       <interleave>
         <ref name="k.profile.name.attribute"/>
         <ref name="k.profile.description.attribute"/>
+        <optional>
+          <ref name="k.profile.displayname.attribute"/>
+        </optional>
         <optional>
           <ref name="k.profile.import.attribute"/>
         </optional>
