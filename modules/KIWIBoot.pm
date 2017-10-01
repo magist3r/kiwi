@@ -374,6 +374,7 @@ sub new {
             $sizeBytes = KIWIGlobals -> instance() -> isize ($system);
             $sizeBytes+= $kernelSize;
             $sizeBytes+= $initrdSize;
+            $sizeBytes+= 100000000;
         }
         #==========================================
         # Store optional size setup from XML
@@ -2765,12 +2766,12 @@ sub setupBootDisk {
     # create read/write filesystem if needed
     #------------------------------------------
     if (($syszip) && (! $haveSplit) && (! $rawRW)) {
-        $kiwi -> info ("Creating ext3 read-write filesystem");
+        $kiwi -> info ("Creating XFS read-write filesystem");
         my $rw = $deviceMap{readwrite};
         my $fsOpts = $cmdL -> getFilesystemOptions();
-        my $createArgs = $fsOpts -> getOptionsStrExt();
+        my $createArgs = $fsOpts -> getOptionsStrXFS();
         my $fstool = "mkfs.xfs";
-        $status = KIWIQX::qxx ("$fstool $rw 2>&1");
+        $status = KIWIQX::qxx ("$fstool $createArgs $rw 2>&1");
         $result = $? >> 8;
         if ($result != 0) {
             $kiwi -> failed ();
