@@ -1031,7 +1031,7 @@ sub setupBTRFSSubVolumes {
         }
     }
     if (! %phash) {
-        return $this;
+        return $path;
     }
     $kiwi -> info ("Creating btrfs pool\n");
     my $data = KIWIQX::qxx ('btrfs subvolume create '.$path.'/@ 2>&1');
@@ -1108,7 +1108,7 @@ sub setupBTRFSSubVolumes {
         $kiwi -> failed();
         return;
     }
-    return $this;
+    return $path;
 }
 
 #==========================================
@@ -1274,8 +1274,19 @@ sub checkLVMbind {
         return;
     }
     my @UmountStack = @{$this->{UmountStack}};
+    $_ = KIWIQX::qxx ("blkid $sdev 2>/dev/null");
     my $vgname = KIWIQX::qxx ("pvs --noheadings -o vg_name $sdev 2>/dev/null");
     my $result = $? >> 8;
+    if (/LVM2/) {
+        for my $i (0..5) {
+            if ($result == 0) {
+                last;
+            }
+            KIWIQX::qxx ("sleep 5");
+            $vgname = KIWIQX::qxx ("pvs --noheadings -o vg_name $sdev 2>/dev/null");
+            $result = $? >> 8;
+        }
+    }
     if ($result != 0) {
         return $sdev;
     }
@@ -2034,7 +2045,7 @@ sub _new_instance {
     # Globals (generic)
     #------------------------------------------
     my %data;
-    $data{Version}         = "7.04.33";
+    $data{Version}         = "7.04.36";
     $data{Publisher}       = "SUSE LINUX GmbH";
     $data{Preparer}        = "KIWI - http://opensuse.github.com/kiwi";
     $data{ConfigName}      = "config.xml";

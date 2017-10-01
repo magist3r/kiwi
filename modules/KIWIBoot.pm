@@ -4297,11 +4297,14 @@ sub setupBootLoaderConfiguration {
     my $failsafe = 1;
     my $cmdline;
     my $title;
+    my $label_is_displayname = 0;
     #==========================================
     # set empty label if not defined
     #------------------------------------------
     if (! $label) {
         $label = "";
+    } elsif ($label eq $xml -> getImageDisplayName()) {
+        $label_is_displayname = 1;
     }
     #==========================================
     # Failsafe boot options
@@ -4584,8 +4587,10 @@ sub setupBootLoaderConfiguration {
         #
         # If you encounter that we need a prefix setup for Xen HVM images
         # it has to be addressed here
-        if ((! $isxen) || ($isxen && $xendomain eq "dom0")) {
-            print $FD 'set prefix=($root)'.$bootpath.'/grub2'."\n";
+        if ($firmware !~ /ec2/) {
+            if ((! $isxen) || ($isxen && $xendomain eq "dom0")) {
+                print $FD 'set prefix=($root)'.$bootpath.'/grub2'."\n";
+            }
         }
         # print $FD "set debug=all\n";
         print $FD 'set linux=linux'."\n";
@@ -4676,7 +4681,11 @@ sub setupBootLoaderConfiguration {
             print $FD '}'."\n";
             $title = $this -> quoteLabel ("Install $label");
         } else {
-            $title = $this -> quoteLabel ("$label [ $topic ]");
+            if ($label_is_displayname) {
+                $title = $this -> quoteLabel ("$label");
+            } else {
+                $title = $this -> quoteLabel ("$label [ $topic ]");
+            }
         }
         print $FD 'menuentry "'.$title.'"';
         print $FD ' --class opensuse --class os {'."\n";
@@ -6858,7 +6867,7 @@ sub getStorageSize {
     # return the size of the given disk or disk
     # partition in Kb. If the call fails the function
     # returns 0
-    # --- 
+    # ---
     my $this = shift;
     my $pdev = shift;
     if ((! $pdev) || (! -e $pdev)) {
