@@ -8464,8 +8464,10 @@ function bootImage {
     cp -a /lib/modules $prefix/run/kernel-modules/lib
     cp -a /lib/firmware $prefix/run/kernel-modules/lib
 
-    ln -sf /run/kernel-modules/lib/modules $prefix/lib/modules
-    ln -sf /run/kernel-modules/lib/firmware $prefix/lib/firmware
+    rm -rf $prefix/lib/modules $prefix/lib/firmware
+
+    ln -s /run/kernel-modules/lib/modules $prefix/lib/
+    ln -s /run/kernel-modules/lib/firmware $prefix/lib/
 
     if [ "$FSTYPE" = "zfs" ];then
         #======================================
