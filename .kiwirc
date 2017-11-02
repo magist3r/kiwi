@@ -1,7 +1,7 @@
 use File::Spec;
-our $System='/home/magist3r/code/LSoft/kiwi';
+our $System= '/opt/build-descriptions';
 our $IrdZipper = "xz";
-our $BasePath = File::Spec->canonpath("/home/magist3r/code/kiwi");
+our $BasePath = File::Spec->canonpath("/opt/kiwi");
 
 our %menu_entries = ();
 $menu_entries{0}{name} = ' - English';
