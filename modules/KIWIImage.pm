@@ -2127,7 +2127,7 @@ sub createImageLiveCD {
         print $IFD "label $lsafe"."\n";
         print $IFD "  kernel linux"."\n";
         print $IFD "  append initrd=initrd ramdisk_size=512000 ";
-        print $IFD "ramdisk_blocksize=4096 showopts systemd.log_level=debug systemd.log_target=kmsg log_buf_len=1M";
+        print $IFD "ramdisk_blocksize=4096 showopts systemd.log_level=debug systemd.log_target=kmsg log_buf_len=1M ";
         print $IFD "@failsafe"."\n";
     } else {
         print $IFD "label $label"."\n";
