@@ -36,7 +36,7 @@ Url:            http://github.com/openSUSE/kiwi
 Name:           kiwi
 License:        GPL-2.0
 Group:          System/Management
-Version:        7.04.36
+Version:        7.04.40
 Provides:       kiwi-schema = 6.2
 Provides:       kiwi-image:aci
 Provides:       kiwi-image:lxc
@@ -85,7 +85,9 @@ BuildRequires:  zypper
 Requires:       perl >= %{perl_version}
 Requires:       checkmedia
 Requires:       coreutils
+%if %{with kiwitools}
 Requires:       kiwi-tools >= %{version}
+%endif
 Requires:       libxslt
 Requires:       perl-Class-Singleton
 Requires:       perl-Config-IniFiles >= 2.49
@@ -161,7 +163,7 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 %endif
 # Tumbleweed:
 # Current Tumbleweed version, moving target
-%if 0%{?suse_version} == 1330
+%if 0%{?suse_version} >= 1330 && !0%{?sle_version}
 %define mysystems suse-tumbleweed
 %endif
 # redefine for the SLE11 case if no sles_version exists
