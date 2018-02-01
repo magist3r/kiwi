@@ -1333,6 +1333,7 @@ EOF
     #======================================
     # create grub2 configuration
     #--------------------------------------
+    export GRUB_DEVICE=$imageBootDevice
     $confTool > $confFile_grub
     if [ ! $? = 0 ];then
         Echo "Failed to create grub2 boot configuration"
