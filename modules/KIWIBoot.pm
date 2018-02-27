@@ -4416,6 +4416,10 @@ sub setupBootLoaderConfiguration {
                 $defaultBootNr = 1;
             }
         }
+        # Set install menu entry as default for installiso too
+        if ($type->{installiso}) {
+            $defaultBootNr = 1;
+        }
     }
     #==========================================
     # report additional cmdline options
