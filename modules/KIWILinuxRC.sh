@@ -139,6 +139,7 @@ function Dialog {
     export DIALOG_CANCEL=1
     hideSplash
 cat > /tmp/fbcode << EOF
+reset
 dialog \
     --ok-label "$TEXT_OK" \
     --cancel-label "$TEXT_CANCEL" \
@@ -1560,16 +1561,23 @@ function updateModuleDependencies {
     # ---
     local IFS=$IFS_ORIG
     local depmodExec=$(lookup depmod 2>/dev/null)
+    local kernel_version
     if [ ! -x "$depmodExec" ];then
         Echo "Could not find depmod executable"
         Echo "Skipping module dependency update"
         systemIntegrity=unknown
         return
     fi
-    if ! $depmodExec -a;then
-        Echo "Module dependency update failed."
-        systemIntegrity=unknown
-    fi
+    for i in /lib/modules/*;do
+        if [ ! -d $i ];then
+             continue
+        fi
+        kernel_version=${i##*/}
+        if ! $depmodExec -a $kernel_version;then
+            Echo "Module dependency update failed."
+            systemIntegrity=unknown
+        fi
+    done
 }
 
 #======================================
@@ -1590,7 +1598,7 @@ function setupInitrd {
     local running
     local rlinux
     local rinitrd
-    local kernel_version=$(uname -r)
+    local kernel_version
     for i in $(find /boot/ -name "System.map*");do
         systemMap=1
     done
@@ -1618,13 +1626,19 @@ function setupInitrd {
         #--------------------------------------
         if [ -x "$dracutExec" ]; then
             # 1. dracut
-            params=" -f /boot/initrd-$kernel_version $kernel_version"
-            Echo "Creating dracut based initrd"
-            if ! $dracutExec -H $params;then
-                Echo "Can't create initrd with dracut"
-                systemIntegrity=unknown
-                bootLoaderOK=0
-            fi
+            for i in /lib/modules/*;do
+                if [ ! -d $i ];then
+                    continue
+                fi
+                kernel_version=${i##*/}
+                params=" -f /boot/initrd-$kernel_version $kernel_version"
+                Echo "Creating dracut based initrd for $kernel_version"
+                if ! $dracutExec -H $params;then
+                    Echo "Can't create initrd with dracut"
+                    systemIntegrity=unknown
+                    bootLoaderOK=0
+                fi
+            done
         elif [ -x "$mkinitrdExec" ]; then
             # 2. mkinitrd
             Echo "Creating mkinitrd based initrd"
@@ -3157,11 +3171,19 @@ EOF
     #======================================
     # set terminal mode
     #--------------------------------------
-    if [ -e $unifont ];then
+    if [[ "$kiwi_firmware" =~ "ec2" ]] || [ "$kiwi_format" = 'vhd-fixed' ]; then
+        # Set serial console mode for ec2* firmwares. This is a hack for
+        # Azure images in order to avoid new attributes in XML schema.
+        local serial
+        serial="serial --speed=9600 --unit=0 --word=8 --parity=no --stop=1"
+        echo "GRUB_TERMINAL=serial"  >> $inst_default_grub
+        echo "GRUB_SERIAL_COMMAND=\"$serial\"" >> $inst_default_grub
+    elif [ -e $unifont ];then
         echo "GRUB_TERMINAL=gfxterm"  >> $inst_default_grub
     else
         echo "GRUB_TERMINAL=console"  >> $inst_default_grub
     fi
+
     #======================================
     # write etc/default/grub_installdevice
     #--------------------------------------
@@ -4637,7 +4659,6 @@ function searchBIOSBootDevice {
     local IFS=$IFS_ORIG
     local file=/boot/mbrid
     local ifix
-    local match_count
     local matched
     local curd
     local mbrML
@@ -4682,7 +4703,6 @@ function searchBIOSBootDevice {
         # initialize variables
         #--------------------------------------
         ifix=0
-        match_count=0
         try_count=$((try_count + 1))
         #======================================
         # stop after a long time of retry
@@ -4710,7 +4730,6 @@ function searchBIOSBootDevice {
             if [ "$mbrML" = "$mbrI" ] || [ "$mbrMB" = "$mbrI" ];then
                 ifix=1
                 matched=$curd
-                match_count=$(($match_count + 1))
                 if [ "$mbrML" = "$mbrI" ];then
                     export masterBootID=$mbrML
                 fi
@@ -4723,13 +4742,6 @@ function searchBIOSBootDevice {
                 fi
             fi
         done
-        #======================================
-        # Multiple matches are bad
-        #--------------------------------------
-        if [ $match_count -gt 1 ];then
-            export biosBootDevice="multiple devices matches same MBR ID: $mbrI"
-            return 2
-        fi
         #======================================
         # Found it...
         #--------------------------------------
@@ -7357,8 +7369,8 @@ function startShell {
             return
         fi
         Echo "Starting boot shell on $ELOG_BOOTSHELL"
-        setctsid -f $ELOG_BOOTSHELL /bin/bash -i
-        ELOGSHELL_PID=$(fuser $ELOG_BOOTSHELL | tr -d " ")
+        setctsid $ELOG_BOOTSHELL /bin/bash -i &
+        ELOGSHELL_PID=$!
         echo ELOGSHELL_PID=$ELOGSHELL_PID >> /iprocs
     fi
 }
@@ -7377,7 +7389,7 @@ function killShell {
     fi
     if [ ! -z "$ELOGSHELL_PID" ];then
         Echo "Stopping boot shell"
-        kill $ELOGSHELL_PID &>/dev/null
+        kill -9 $ELOGSHELL_PID &>/dev/null
     fi
     if [ $umountProc -eq 1 ];then
         umount /proc
