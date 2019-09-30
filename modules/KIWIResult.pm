@@ -426,16 +426,14 @@ sub __bundleDisk {
         $format = 'vhdfixed';
     }
     if ($format eq 'gce') {
-        my @archives = glob ("$source/*gce-*.tar.gz");
+        my @archives = glob ("$source/*.tar.gz");
         if (! @archives) {
             $kiwi -> error  ("No GCE archive(s) found");
             $kiwi -> failed ();
             return;
         }
         foreach my $archive (@archives) {
-            if ($archive =~ /$source\/(.*gce-.*)\.tar\.gz/) {
-                return $this -> __bundleExtension ('tar.gz', $1);
-            }
+            return $this -> __bundleExtension ('tar.gz');
         }
     }
     if ($format eq 'vagrant') {
@@ -486,7 +484,7 @@ sub __sign_with_sha256sum {
         $kiwi -> failed ();
         return;
     }
-    while (my $entry = readdir ($dh)) {
+    while (my $entry = sort(readdir ($dh))) {
         next if $entry eq "." || $entry eq "..";
         next if ! -f "$tmpdir/$entry";
         my $alg = 'sha256';

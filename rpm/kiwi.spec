@@ -36,7 +36,7 @@ Url:            http://github.com/openSUSE/kiwi
 Name:           kiwi
 License:        GPL-2.0
 Group:          System/Management
-Version:        7.04.45
+Version:        7.04.55
 Provides:       kiwi-schema = 6.2
 Provides:       kiwi-image:aci
 Provides:       kiwi-image:lxc
@@ -48,7 +48,6 @@ Provides:       kiwi:%{_mandir}/man1/KIWI::kiwirc.1.gz
 Conflicts:      kiwi-doc < 5
 Release:        0
 # requirements to build packages
-BuildRequires:  genisoimage
 BuildRequires:  diffutils
 BuildRequires:  e2fsprogs
 BuildRequires:  gcc-c++
@@ -77,17 +76,19 @@ BuildRequires:  syslinux
 %endif
 %if 0%{?suse_version} > 1140
 BuildRequires:  btrfsprogs
-BuildRequires:  genisoimage
 BuildRequires:  squashfs
 BuildRequires:  zypper
+%endif
+%if 0%{suse_version} >= 1500
+BuildRequires:  mkisofs
+%else
+BuildRequires:  genisoimage
 %endif
 # requirements to run kiwi
 Requires:       perl >= %{perl_version}
 Requires:       checkmedia
 Requires:       coreutils
-%if %{with kiwitools}
 Requires:       kiwi-tools >= %{version}
-%endif
 Requires:       libxslt
 Requires:       perl-Class-Singleton
 Requires:       perl-Config-IniFiles >= 2.49
@@ -250,7 +251,11 @@ Requires:       createrepo
 Requires:       inst-source-utils
 Requires:       kiwi-instsource-plugin
 Requires:       kiwi = %{version}
+%if 0%{suse_version} >= 1500
+Requires:       mkisofs
+%else
 Requires:       genisoimage
+%endif
 %ifarch %ix86 x86_64
 Requires:       syslinux
 %endif
@@ -344,7 +349,11 @@ Requires:       syslinux
 %endif
 Requires:       dosfstools
 %if 0%{?suse_version}
+%if 0%{suse_version} >= 1500
+Requires:       mkisofs
+%else
 Requires:       genisoimage
+%endif
 %endif
 License:        GPL-2.0+
 Group:          System/Management
@@ -361,7 +370,11 @@ Authors:
 Provides:       kiwi-image:iso
 Provides:       kiwi-boot:isoboot
 %if 0%{?suse_version}
+%if 0%{suse_version} >= 1500
+Requires:       mkisofs
+%else
 Requires:       genisoimage
+%endif
 %endif
 Requires:       kiwi-desc-isoboot = %{version}
 Requires:       %(echo `bash %{S:4} %{S:0} isoboot %{myarch} %{mysystems}`)
@@ -433,7 +446,11 @@ Summary:        KIWI - buildservice package requirements for vmxboot
 Provides:       kiwi-image:vmx
 Provides:       kiwi-boot:vmxboot
 %if 0%{?suse_version}
+%if 0%{suse_version} >= 1500
+Requires:       mkisofs
+%else
 Requires:       genisoimage
+%endif
 %endif
 Requires:       kiwi-desc-vmxboot = %{version}
 Requires:       %(echo `bash %{S:4} %{S:0} vmxboot %{myarch} %{mysystems}`)
@@ -518,7 +535,11 @@ Requires:       e2fsprogs
 Requires:       kiwi = %{version}
 Requires:       parted
 %if 0%{?suse_version}
+%if 0%{suse_version} >= 1500
+Requires:       mkisofs
+%else
 Requires:       genisoimage
+%endif
 Requires:       multipath-tools
 Requires:       mtools
 Requires:       squashfs
@@ -554,7 +575,11 @@ Provides:       kiwi-image:oem
 Provides:       kiwi-boot:oemboot
 Provides:       kiwi-boot:tbz
 %if 0%{?suse_version}
+%if 0%{suse_version} >= 1500
+Requires:       mkisofs
+%else
 Requires:       genisoimage
+%endif
 %endif
 Requires:       kiwi-desc-oemboot = %{version}
 Requires:       %(echo `bash %{S:4} %{S:0} oemboot %{myarch} %{mysystems}`)
@@ -686,7 +711,7 @@ echo "mysystems set to: %{mysystems}"
 
 %if 0%{?suse_version} > 1140
 %check
-make KIWIVERBTEST=1 KIWI_NO_NET=1 test
+make KIWIVERBTEST=1 KIWI_NO_NET=1 KIWI_NO_FS=1 test
 %endif
 
 %install
