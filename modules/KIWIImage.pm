@@ -1949,7 +1949,7 @@ sub createImageLiveCD {
         # Standard boot
         #------------------------------------------
         if (! $isxen) {
-            for my $entry ( sort keys $menu_entries ) {
+            for my $entry ( sort keys %{$menu_entries} ) {
                 print $FD 'menuentry "'.$title.$menu_entries->{$entry}{name}.'"';
                 print $FD ' --class opensuse --class os {'."\n";
                 print $FD "\t"."echo Loading linux...\n";
@@ -2116,7 +2116,7 @@ sub createImageLiveCD {
     print $IFD "prompt   1"."\n";
     print $IFD "timeout  $bootTimeout"."\n";
     if (! $isxen) {
-        for my $entry ( sort keys $menu_entries ) {
+        for my $entry ( sort keys %{$menu_entries} ) {
             print $IFD "label $label$menu_entries->{$entry}{name}"."\n";
             print $IFD "  kernel linux"."\n";
             print $IFD "  append initrd=initrd ramdisk_size=512000 ";
