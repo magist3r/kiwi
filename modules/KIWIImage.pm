@@ -1734,7 +1734,7 @@ sub createImageLiveCD {
             $efi_fo = 'i386-efi';
             $efi_bin= 'bootx32.efi';
         }
-        if (-d "$tmpdir/usr/lib/grub2") {
+        if (-d "$tmpdir/usr/share/grub2") {
             $grub_efi = 'grub2';
         } elsif (-d "$tmpdir/usr/lib/grub") {
             $grub_efi = 'grub';
@@ -1746,7 +1746,7 @@ sub createImageLiveCD {
         my $pref       = $xml -> getPreferences();
         push @theme, $pref -> getBootSplashTheme();
         push @theme, $pref -> getBootLoaderTheme();
-        my $ir_modules = "$tmpdir/usr/lib/$grub_efi/$efi_fo";
+        my $ir_modules = "$tmpdir/usr/share/$grub_efi/$efi_fo";
         my $ir_themes  = "$tmpdir/usr/share/$grub_share/themes";
         my $ir_font    = "$tmpdir/usr/share/$grub_share/unicode.pf2";
         my $efi_modules= "$CD/EFI/BOOT";

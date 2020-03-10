@@ -1994,7 +1994,7 @@ sub setupBootDisk {
         ($firmware eq "vboot")      ||
         ($bootloader eq "grub2_s390x_emu")
     ) {
-        $this->{jumpsize} = 200;
+        $this->{jumpsize} = 20;
         $this -> __updateDiskSize ($this->{jumpsize});
         $needJumpP = 1;
     }
@@ -3620,12 +3620,12 @@ sub setupBootLoaderStages {
         #==========================================
         # Stage files
         #------------------------------------------
-        $stages{bios}{initrd}   = "'usr/lib/$grub_bios/$grubpc/*'";
-        $stages{bios}{stageSRC} = "/usr/lib/$grub_bios/$grubpc";
+        $stages{bios}{initrd}   = "'usr/share/$grub_bios/$grubpc/*'";
+        $stages{bios}{stageSRC} = "/usr/share/$grub_bios/$grubpc";
         $stages{bios}{stageDST} = "/boot/grub2/$grubpc";
         if (($firmware eq "efi") || ($firmware eq "uefi")) {
-            $stages{efi}{initrd}   = "'usr/lib/$grub_efi/$efipc/*'";
-            $stages{efi}{stageSRC} = "/usr/lib/$grub_efi/$efipc";
+            $stages{efi}{initrd}   = "'usr/share/$grub_efi/$efipc/*'";
+            $stages{efi}{stageSRC} = "/usr/share/$grub_efi/$efipc";
             $stages{efi}{stageDST} = "/boot/grub2/$efipc";
         }
         if ($firmware eq "uefi") {
@@ -3635,13 +3635,13 @@ sub setupBootLoaderStages {
             $stages{efi}{signed}    = "usr/$lib/efi/grub.efi";
         }
         if (($firmware eq "ec2") || ($firmware eq "ec2hvm")) {
-            $stages{ec2}{initrd}   = "'usr/lib/$grub_bios/$xenpc/*'";
-            $stages{ec2}{stageSRC} = "/usr/lib/$grub_bios/$xenpc";
+            $stages{ec2}{initrd}   = "'usr/share/$grub_bios/$xenpc/*'";
+            $stages{ec2}{stageSRC} = "/usr/share/$grub_bios/$xenpc";
             $stages{ec2}{stageDST} = "/boot/grub2/$xenpc";
         }
         if ($firmware eq "ofw") {
-            $stages{ofw}{initrd}    = "'usr/lib/$grub_ofw/$grubofw/*'";
-            $stages{ofw}{stageSRC}  = "/usr/lib/$grub_ofw/$grubofw";
+            $stages{ofw}{initrd}    = "'usr/share/$grub_ofw/$grubofw/*'";
+            $stages{ofw}{stageSRC}  = "/usr/share/$grub_ofw/$grubofw";
             $stages{ofw}{stageDST}  = "/boot/grub2/$grubofw";
         }
         #==========================================
@@ -5888,7 +5888,7 @@ sub installBootLoader {
             # architectures: ppc64le
             $loaderTarget = $deviceMap->{prep};
             $grubtoolopts = "--grub-mkdevicemap=$dmfile -v ";
-            $grubtoolopts.= "-d $mount/usr/lib/grub2/$grubarch ";
+            $grubtoolopts.= "-d $mount/usr/share/grub2/$grubarch ";
             $grubtoolopts.= "--root-directory=$mount --force --no-nvram ";
             $targetMessage= "On PReP partition";
         } else {
