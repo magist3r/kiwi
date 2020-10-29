@@ -433,7 +433,7 @@ function createInitialDevices {
     #======================================
     # mount devtmpfs or tmpfs
     #--------------------------------------
-    if mount -t devtmpfs -o mode=0755,nr_inodes=0 devtmpfs $prefix; then
+    if mount -t devtmpfs -o mode=0755 devtmpfs $prefix; then
         export have_devtmpfs=true
     else
         export have_devtmpfs=false
